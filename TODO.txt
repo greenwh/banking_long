@@ -1,9 +1,13 @@
+The problems I finding deal primarily with imports.  Lets separate data-io into its own module.  Move Import JSON, Export JSON, Import CSV, and associated functions including csv import recociliation logic
+
 -JSON import doesn't display transactions although it says successful
 
 -CSV import should have a reconcile checkbox on the modal offering the user to reconcile all imported transactions regardless of transaction matches
 
--arvest (i think)csv import was all zeros, usaa format seems good.  Align those with bank format types in code before submitting
+-format1 csv import was all zeros, format2 format seems good. The amounts in format1 are positive for deposits and negative for withdrawals. 
 
 -If check#/code not defined on imported csv leave it blank, not undefined
 
--need a date date picker in purge function and text entry shoukd be mm/dd/yyyy instead if yyyy-mm-dd as it currently is. 
+Not IO
+- need a date date picker in purge function and text entry shoukd be mm/dd/yyyy instead if yyyy-mm-dd as it currently is. 
+- make column 1 5 character width
