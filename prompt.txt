@@ -1,0 +1,77 @@
+You are a frontend app developer with domain knowledge of personal finance.
+
+Develop a checkbook progressive web app. The app should be frontend only using html, css and vanilla JavaScript.  It should use indexdb as primary persistent storage with local storage data backup/sync between the two for redundancy.  Indexdb takes precedence.  Sync when opening and closing app.  Should also have the ability to backup data as a user initiated json export, and subsequent import. It should have full offline functionality and be installable. Service worker should provide full caching for offline use, background processes and update checks. 
+
+The interface should be a modern web design, aesthetically pleasing, very simple and uncluttered on a mobile phone, primary color is blue with transactions alternating every other one between shades of blue for readability (refer to image).  Transaction title bar should be darker than the transaction lines beneath it. There should be an always visible legend above the transaction title bar that defines the codes used in column 1 (defined below, refer to image for styling)
+
+The app should be  optimized for mobile devices primarily but may be used in desktops.  The app should be able to handle up to 40mb of data but prompt the user to reconcile and purge annually. Use horizontal scrolling to maintain tabular layout. Rotate with device to “landscape” view. If the contents is “close” to being all displayed you may resize it slightly.
+
+The app should be able to handle multiple accounts using user defined names and always start in the last one used. 
+
+All date entries should have date pickers with the ability to type directly in as well
+
+<Top Button Bar>
+Across the top should the buttons that control actions, they should be blue with white text measuring:
+    padding: 8px
+    border-radius: 8px
+    min-width: 30px
+    height: 20px
+    line-height: .3
+    font-size: 14px
+    text-align: center
+
+Button definitions (title text in quotes):
+    
+“Account” - switches between accounts or create new account option as well as delete existing 
+
+“Add” -  bring up a modal to add transaction using definitions under register 
+
+“Filter” - filterable by date range, transaction text, reconciled status, and amount.  Should also have the choice of displaying oldest first or newest first (with choice remembered between sessions).
+
+“Purge” -  based on reconciliation status (checkbox) without deleting unreconciled older transactions.  Prompt for date input using a date picker on purge request. 
+
+“Save” - Create a JSON save file
+
+“Load” - Load a previously save JSON save file
+
+“CSV” - Import a csv file created by the bank. Attempt to automatically determine which format is being loaded based on the headers.  Parsing logic should account for quoted descriptions containing commas.  On csv import reconcile imported transactions with stored register transactions (use amount and date(+- 1 day), description can be close but not exact), for matches mark existing transactions as reconciled.  When unable to match prompt the user to manually reconcile the transaction.  Learn from reconciliation choices.
+Start with 2 definitions:
+'Bank CSV Format 1 (both Credit and Debit amount Columns)'
+header_signature: ‘Account,Date,Pending?,Description,Category,Check,Credit,Debit', 
+      mapping:
+            date: 1,
+            description: 3
+            credit: 6,
+            debit: 7
+'Bank CSV Format 2 (Single Amount Column)',
+header_signature: 'Date,Description,Original Description,Category,Amount,Status',
+        mapping:
+            date: 0,
+            description: 1,
+            amount: 4 (positive maps to credit, negative maps to withdrawal 
+
+<Transaction Register>
+The register should:
+Be tabular with 8 columns, columns should allow user to enter information directly into the transaction entry row (in-line editing) in addition to using the add transaction button modal. Because the user can enter information in-line there should be a blank transaction at the end that a user can just plug information into.  In-line entries have the same options as the modal window as far as drop-downs or text entry.  By default the transactions should be sorted by date oldest first.
+
+Columns:
+
+1 - “Number or code” - Type in check number in-line or drop-down with codes.  Letters in brackets are code letters to be displayed in column 1:
+       “[D]ebit [C]ard”
+       “[ATM] Teller Withdrawal”
+       “[A]utomatic [D]eposit”
+       “[A]utomatic [P]ayment”
+       “Online [B]ill [P]ay”
+       “Online or phone [T]ransfer”
+       “[I]nterest”
+2 - “Date” - date picker or type directly in 
+3 - “Transaction Description” - text 
+4 - “Withdrawal, payment (-)” - dollar amount
+5 - Reconcile checkbox
+6 - “Deposit, credit (+)” - dollar amount
+7 -  Running balance should include all reconciled, unreconciled and pending transactions, calculate automatically when a transaction is entered and recompute throughout if a transaction is deleted.  Balance should turn red if negative. 
+8 - Delete Action button
+
+Providing an image for example, the image is only a guide and colors should not be matched exactly, just aesthetically pleasing shades of blue.  The fee column in the image is unnecessary.
+
+

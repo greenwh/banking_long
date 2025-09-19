@@ -1,0 +1,9 @@
+-JSON import doesn't display transactions although it says successful
+
+-CSV import should have a reconcile checkbox on the modal offering the user to reconcile all imported transactions regardless of transaction matches
+
+-arvest (i think)csv import was all zeros, usaa format seems good.  Align those with bank format types in code before submitting
+
+-If check#/code not defined on imported csv leave it blank, not undefined
+
+-need a date date picker in purge function and text entry shoukd be mm/dd/yyyy instead if yyyy-mm-dd as it currently is. 

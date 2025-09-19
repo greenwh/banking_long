@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkbook</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3498db">
+</head>
+<body>
+    <div class="app-container">
+        <h1 id="account-name-header">Checkbook</h1>
+        <div class="top-bar">
+            <button id="account-btn">Account</button>
+            <button id="add-btn">Add</button>
+            <button id="filter-btn">Filter</button>
+            <button id="purge-btn">Purge</button>
+            <button id="save-btn">Save (JSON)</button>
+            <button id="load-btn">Load (JSON)</button>
+            <label for="csv-import" class="btn-style-label">Import CSV</label>
+            <input type="file" id="csv-import" accept=".csv" style="display: none;">
+            <input type="file" id="json-import" accept=".json" style="display: none;">
+        </div>
+
+        <div class="legend">
+            <span><b>DC</b>: Debit Card</span>
+            <span><b>ATM</b>: Teller Withdrawal</span>
+            <span><b>AD</b>: Auto Deposit</span>
+            <span><b>AP</b>: Auto Payment</span>
+            <span><b>BP</b>: Bill Pay</span>
+            <span><b>T</b>: Transfer</span>
+            <span><b>I</b>: Interest</span>
+        </div>
+
+        <div class="transaction-register-container">
+            <table class="transaction-register">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Withdrawal (-)</th>
+                        <th>&#10003;</th>
+                        <th>Deposit (+)</th>
+                        <th>Balance</th>
+                        <th>Del</th>
+                    </tr>
+                </thead>
+                <tbody id="transaction-body">
+                    <!-- Transactions will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="account-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Accounts</h2>
+            <label for="account-select">Current Account:</label>
+            <select id="account-select"></select>
+            <hr>
+            <label for="new-account-name">Create New Account:</label>
+            <input type="text" id="new-account-name" placeholder="New Account Name">
+            <button id="create-account-btn">Create Account</button>
+            <hr>
+            <button id="delete-account-btn">Delete Current Account</button>
+        </div>
+    </div>
+
+    <div id="add-transaction-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Add Transaction</h2>
+            <form id="add-transaction-form">
+                <label for="transaction-code">Code:</label>
+                <input list="transaction-codes-list" id="transaction-code" name="transaction-code" placeholder="Check # or Code">
+                <label for="transaction-date">Date:</label>
+                <input type="date" id="transaction-date" required>
+                <label for="transaction-description">Description:</label>
+                <input type="text" id="transaction-description" required>
+                <label for="transaction-withdrawal">Withdrawal (-):</label>
+                <input type="number" id="transaction-withdrawal" step="0.01" placeholder="0.00">
+                <label for="transaction-deposit">Deposit (+):</label>
+                <input type="number" id="transaction-deposit" step="0.01" placeholder="0.00">
+                <button type="submit">Add Transaction</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="filter-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Filter & Sort</h2>
+            <form id="filter-form">
+                <label for="filter-start-date">Start Date:</label>
+                <input type="date" id="filter-start-date">
+                <label for="filter-end-date">End Date:</label>
+                <input type="date" id="filter-end-date">
+                <label for="filter-description">Description contains:</label>
+                <input type="text" id="filter-description">
+                <label for="filter-reconciled">Status:</label>
+                <select id="filter-reconciled">
+                    <option value="all">All</option>
+                    <option value="reconciled">Reconciled</option>
+                    <option value="unreconciled">Unreconciled</option>
+                </select>
+                <label for="filter-amount">Amount:</label>
+                <input type="number" id="filter-amount" step="0.01" placeholder="e.g., 25.50">
+                <label for="sort-order">Sort Order:</label>
+                <select id="sort-order">
+                    <option value="oldest">Oldest First</option>
+                    <option value="newest">Newest First</option>
+                </select>
+                <button type="submit">Apply Filter</button>
+                <button type="button" id="clear-filter-btn">Clear Filter</button>
+            </form>
+        </div>
+    </div>
+
+    <datalist id="transaction-codes-list">
+        <option value="DC">Debit Card</option>
+        <option value="ATM">ATM Teller Withdrawal</option>
+        <option value="AD">Automatic Deposit</option>
+        <option value="AP">Automatic Payment</option>
+        <option value="BP">Online Bill Pay</option>
+        <option value="T">Online or Phone Transfer</option>
+        <option value="I">Interest</option>
+    </datalist>
+
+    <script src="script.js" type="module"></script>
+</body>
+</html>
