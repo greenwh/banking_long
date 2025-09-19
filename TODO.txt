@@ -1,13 +1,76 @@
-The problems I finding deal primarily with imports.  Lets separate data-io into its own module.  Move Import JSON, Export JSON, Import CSV, and associated functions including csv import recociliation logic
-
 -JSON import doesn't display transactions although it says successful
 
 -CSV import should have a reconcile checkbox on the modal offering the user to reconcile all imported transactions regardless of transaction matches
 
--format1 csv import was all zeros, format2 format seems good. The amounts in format1 are positive for deposits and negative for withdrawals. 
+-format1 csv import was all zeros, format2 format seems good. The amounts in format1 are positive for deposits and negative for withdrawals. code below from another app works:
 
 -If check#/code not defined on imported csv leave it blank, not undefined
 
 Not IO
 - need a date date picker in purge function and text entry shoukd be mm/dd/yyyy instead if yyyy-mm-dd as it currently is. 
-- make column 1 5 character width
+- make column 1 just wide enough to hold the empty box text (code/Chk #)
+- make withdrawal and deposit columns just wide enough for the headers with a 1 character buffer on each end
+- amounts should always display as dollars and cents,  currently withdrawals and deposits display as general numbers, interger when there's no cents.
+
+
+
+
+    // --- CSV IMPORT SYSTEM ---
+    function robustSplit(line) {
+        const columns = [];
+        let currentColumn = '';
+        let inQuote = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1];
+            if (char === '"' && (i === 0 || line[i - 1] === ',')) {
+                if (!inQuote) {
+                    inQuote = true;
+                    continue;
+                }
+            }
+            if (char === '"' && (nextChar === ',' || nextChar === undefined || nextChar === '\r')) {
+                if (inQuote) {
+                    inQuote = false;
+                    continue;
+                }
+            }
+            if (char === ',' && !inQuote) {
+                columns.push(currentColumn);
+                currentColumn = '';
+            } else {
+                currentColumn += char;
+            }
+        }
+        columns.push(currentColumn.trim());
+        return columns;
+    }
+
+    const csvParserProfiles = [{
+        name: 'Bank Format 1 (Credit/Debit Columns)',
+        header_signature: 'Account,Date,Pending?,Description,Category,Check,Credit,Debit',
+        columns: {
+            date: 1,
+            description: 3,
+            category: 4,
+            credit: 6,
+            debit: 7
+        },
+        processAmount: (row) => {
+            const credit = parseFloat(row[6]) || 0;
+            const debit = parseFloat(row[7]) || 0;
+            return credit + debit;
+        }
+    }, {
+        name: 'Bank Format 2 (Single Amount Column)',
+        header_signature: 'Date,Description,Original Description,Category,Amount,Status',
+        columns: {
+            date: 0,
+            description: 1,
+            category: 3,
+            amount: 4
+        },
+        processAmount: (row) => {
+            return parseFloat(row[4]);
+        }
+    }];
