@@ -37,14 +37,14 @@
             <table class="transaction-register">
                 <thead>
                     <tr>
-                        <th>Code</th>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>Withdrawal (-)</th>
-                        <th>&#10003;</th>
-                        <th>Deposit (+)</th>
-                        <th>Balance</th>
-                        <th>Del</th>
+                        <th class="col-code">Code</th>
+                        <th class="col-date">Date</th>
+                        <th class="col-description">Description</th>
+                        <th class="col-withdrawal">Withdrawal (-)</th>
+                        <th class="col-reconciled">&#10003;</th>
+                        <th class="col-deposit">Deposit (+)</th>
+                        <th class="col-balance">Balance</th>
+                        <th class="col-delete">Del</th>
                     </tr>
                 </thead>
                 <tbody id="transaction-body">
@@ -133,7 +133,7 @@
             <button id="csv-cancel-import-btn" class="cancel-btn">Cancel</button>
         </div>
     </div>
-     
+
     <div id="purge-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
@@ -147,6 +147,7 @@
             </form>
         </div>
     </div>
+
     <datalist id="transaction-codes-list">
         <option value="DC"></option>
         <option value="ATM"></option>

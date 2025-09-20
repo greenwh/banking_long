@@ -79,11 +79,25 @@ body {
     white-space: nowrap;
 }
 
+.transaction-register .col-code { width: 130px; }
+.transaction-register .col-date { width: 140px; }
+.transaction-register .col-withdrawal, .transaction-register .col-deposit { width: 120px; text-align: right; }
+.transaction-register .col-reconciled { width: 40px; text-align: center; }
+.transaction-register .col-balance { width: 140px; text-align: right; }
+.transaction-register .col-delete { width: 50px; text-align: center; }
+.transaction-register .col-description { width: 100%; }
+
 .transaction-register th {
     background-color: #34495e;
     color: white;
     position: sticky;
     top: 0;
+}
+
+.transaction-register th.col-withdrawal,
+.transaction-register th.col-deposit,
+.transaction-register th.col-balance {
+    text-align: right;
 }
 
 .transaction-register tbody tr:nth-child(odd) { background-color: #eaf2f8; }
@@ -101,6 +115,9 @@ body {
     outline: none;
     border: 1px solid #3498db;
     background: white;
+}
+.transaction-register .col-withdrawal input, .transaction-register .col-deposit input {
+    text-align: right;
 }
 
 .balance-negative { color: #e74c3c; font-weight: bold; }
@@ -139,8 +156,8 @@ body {
 .modal-content button { width: 100%; padding: 10px; margin-top: 15px; background-color: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; }
 .modal-content button:hover { background-color: #2980b9; }
 
-#delete-account-btn { background-color: #e74c3c; }
-#delete-account-btn:hover { background-color: #c0392b; }
+#delete-account-btn, #confirm-purge-btn { background-color: #e74c3c; }
+#delete-account-btn:hover, #confirm-purge-btn:hover { background-color: #c0392b; }
 #clear-filter-btn, .modal-content button.cancel-btn { background-color: #95a5a6; }
 #clear-filter-btn:hover, .modal-content button.cancel-btn:hover { background-color: #7f8c8d; }
 
@@ -156,5 +173,3 @@ body {
 .checkbox-container label {
     margin-top: 0;
 }
-#confirm-purge-btn { background-color: #e74c3c; }
-#confirm-purge-btn:hover { background-color: #c0392b; }

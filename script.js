@@ -16,7 +16,7 @@ const modals = {
     add: document.getElementById('add-transaction-modal'),
     filter: document.getElementById('filter-modal'),
     csvOptions: document.getElementById('csv-options-modal'),
-    purge: document.getElementById('purge-modal') // Add this line
+    purge: document.getElementById('purge-modal')
 };
 const transactionBody = document.getElementById('transaction-body');
 const accountSelect = document.getElementById('account-select');
@@ -28,25 +28,21 @@ async function loadApp() {
     await loadAccounts();
     const lastAccountId = localStorage.getItem('checkbook_lastAccountId');
 
-    // Robustly determine the current account ID
     let determinedAccountId = null;
     if (lastAccountId) {
         determinedAccountId = parseInt(lastAccountId);
     } else if (accountSelect.options.length > 0) {
-        // **THE FIX**: Directly use the value from the first option,
-        // which is more reliable than accountSelect.value on initial load.
         determinedAccountId = parseInt(accountSelect.options[0].value);
     }
     currentAccountId = determinedAccountId;
 
     if (currentAccountId) {
         accountSelect.value = currentAccountId;
-        // Also save this choice back to localStorage for the next page load
         localStorage.setItem('checkbook_lastAccountId', currentAccountId);
         await loadTransactionsForCurrentAccount();
     } else {
         accountNameHeader.textContent = "Create an Account";
-        render(); // Render an empty state
+        render();
     }
     setupEventListeners();
     registerServiceWorker();
@@ -84,7 +80,6 @@ async function loadTransactionsForCurrentAccount() {
 
 // --- UI RENDERING ---
 function render() {
-    // Step 1: Apply all user filters to get the relevant transactions.
     let filteredTxs = transactions.filter(tx => {
         if (filters.startDate && new Date(tx.date) < new Date(filters.startDate)) return false;
         if (filters.endDate && new Date(tx.date) > new Date(filters.endDate)) return false;
@@ -100,17 +95,14 @@ function render() {
         return true;
     });
 
-    // Step 2: Create a chronologically sorted copy to correctly calculate balances.
     let chronoSortedTxs = [...filteredTxs].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Step 3: Calculate and attach the correct running balance to each transaction object.
     let finalBalance = 0;
     chronoSortedTxs.forEach(tx => {
         finalBalance += (parseFloat(tx.deposit) || 0) - (parseFloat(tx.withdrawal) || 0);
-        tx.runningBalance = finalBalance; // Attach the calculated balance to the object.
+        tx.runningBalance = finalBalance;
     });
 
-    // Step 4: Now, sort the augmented array for the final display order based on user's choice.
     let displayTxs = chronoSortedTxs.sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
@@ -118,14 +110,11 @@ function render() {
         return filters.sortOrder === 'oldest' ? dateA - dateB : dateB - dateA;
     });
 
-    // Step 5: Render the UI with the pre-calculated balances.
     transactionBody.innerHTML = '';
     displayTxs.forEach(tx => {
-        // Pass the correct, pre-calculated balance to the rendering function.
         transactionBody.appendChild(createTransactionRow(tx, tx.runningBalance));
     });
 
-    // Add the blank "new transaction" row, using the correct final balance.
     if (currentAccountId) {
         transactionBody.appendChild(createTransactionRow(null, finalBalance));
     }
@@ -138,15 +127,20 @@ function createTransactionRow(tx, balance) {
     row.dataset.id = txData.id;
     const balanceClass = balance < 0 ? 'class="balance-negative"' : '';
     
+    const formatAmountForInput = (value) => {
+        const num = parseFloat(value);
+        return !isNaN(num) && num !== 0 ? num.toFixed(2) : '';
+    };
+
     row.innerHTML = `
-        <td><input type="text" list="transaction-codes-list" value="${txData.code}" placeholder="Code/Chk #" data-field="code"></td>
-        <td><input type="date" value="${txData.date ? txData.date.split('T')[0] : ''}" data-field="date"></td>
-        <td><input type="text" value="${txData.description}" placeholder="Description" data-field="description"></td>
-        <td><input type="number" step="0.01" value="${txData.withdrawal || ''}" placeholder="0.00" data-field="withdrawal"></td>
-        <td><input type="checkbox" ${txData.reconciled ? 'checked' : ''} data-field="reconciled"></td>
-        <td><input type="number" step="0.01" value="${txData.deposit || ''}" placeholder="0.00" data-field="deposit"></td>
-        <td ${balanceClass}>${isNewRow ? '' : formatCurrency(balance)}</td>
-        <td>${!isNewRow ? '<button class="delete-btn">X</button>' : ''}</td>
+        <td class="col-code"><input type="text" list="transaction-codes-list" value="${txData.code}" placeholder="Code/Chk #" data-field="code"></td>
+        <td class="col-date"><input type="date" value="${txData.date ? txData.date.split('T')[0] : ''}" data-field="date"></td>
+        <td class="col-description"><input type="text" value="${txData.description}" placeholder="Description" data-field="description"></td>
+        <td class="col-withdrawal"><input type="number" step="0.01" value="${formatAmountForInput(txData.withdrawal)}" placeholder="0.00" data-field="withdrawal"></td>
+        <td class="col-reconciled"><input type="checkbox" ${txData.reconciled ? 'checked' : ''} data-field="reconciled"></td>
+        <td class="col-deposit"><input type="number" step="0.01" value="${formatAmountForInput(txData.deposit)}" placeholder="0.00" data-field="deposit"></td>
+        <td class="col-balance" ${balanceClass}>${isNewRow ? '' : formatCurrency(balance)}</td>
+        <td class="col-delete">${!isNewRow ? '<button class="delete-btn">X</button>' : ''}</td>
     `;
     
     row.querySelectorAll('input').forEach(input => input.addEventListener('change', handleInlineEdit));
@@ -173,6 +167,14 @@ function setupEventListeners() {
         document.getElementById('sort-order').value = filters.sortOrder;
         modals.filter.style.display = 'block';
     });
+    document.getElementById('purge-btn').addEventListener('click', () => {
+        document.getElementById('purge-date').value = new Date().toISOString().split('T')[0];
+        modals.purge.style.display = 'block';
+    });
+    document.getElementById('purge-form').addEventListener('submit', handlePurge);
+    document.querySelector('#purge-modal .cancel-btn').addEventListener('click', () => {
+        modals.purge.style.display = 'none';
+    });
     document.querySelectorAll('.close-btn').forEach(btn => {
         btn.addEventListener('click', e => e.target.closest('.modal').style.display = 'none');
     });
@@ -185,17 +187,6 @@ function setupEventListeners() {
     document.getElementById('add-transaction-form').addEventListener('submit', handleAddTransaction);
     document.getElementById('filter-form').addEventListener('submit', handleFilter);
     document.getElementById('clear-filter-btn').addEventListener('click', handleClearFilter);
-    //document.getElementById('purge-btn').addEventListener('click', handlePurge);
-    document.getElementById('purge-btn').addEventListener('click', () => {
-        document.getElementById('purge-date').value = new Date().toISOString().split('T')[0];
-        modals.purge.style.display = 'block';
-    });
-    
-    document.getElementById('purge-form').addEventListener('submit', handlePurge);
-    document.querySelector('#purge-modal .cancel-btn').addEventListener('click', () => {
-        modals.purge.style.display = 'none';
-    });
-    
     document.getElementById('save-btn').addEventListener('click', io.handleJsonExport);
     document.getElementById('load-btn').addEventListener('click', () => document.getElementById('json-import').click());
     
@@ -212,25 +203,21 @@ function setupEventListeners() {
         csvImportPlan = null;
     });
 
-document.getElementById('json-import').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-        const success = await io.handleJsonImport(file);
-        if (success) {
-            // Clear the last used account ID before reloading
-            localStorage.removeItem('checkbook_lastAccountId');
-            // A full reload is the most robust way to reset the app's state
-            location.reload();
+    document.getElementById('json-import').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const success = await io.handleJsonImport(file);
+            if (success) {
+                localStorage.removeItem('checkbook_lastAccountId');
+                location.reload();
+            }
+        } catch(err) {
+            console.warn(err.message);
+        } finally {
+            e.target.value = '';
         }
-    } catch(err) {
-        // This will catch the "Import cancelled by user" error and prevent it from polluting the console
-        console.warn(err.message);
-    } finally {
-        // Clear the file input to allow re-importing the same file if needed
-        e.target.value = '';
-    }
-});
+    });
 
     document.getElementById('csv-import').addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -367,18 +354,14 @@ function handleClearFilter() {
 }
     
 async function handlePurge(e) {
-    e.preventDefault(); // Prevent form from reloading page
+    e.preventDefault();
     const dateStr = document.getElementById('purge-date').value;
     if (!dateStr) {
         alert("Please select a date.");
         return;
     }
-
-    // The input type="date" value is already in YYYY-MM-DD format.
     const purgeDate = new Date(dateStr);
-    
-    // We add one day to the date so that "before 09-20" includes all transactions on 09-20.
-    purgeDate.setDate(purgeDate.getDate() + 1); 
+    purgeDate.setDate(purgeDate.getDate() + 1);
 
     const txsToPurge = transactions.filter(tx => tx.reconciled && new Date(tx.date) < purgeDate);
 
@@ -393,35 +376,14 @@ async function handlePurge(e) {
     } else {
         alert("No reconciled transactions were found on or before the selected date.");
     }
-}    
+}
+    
 // --- PWA, SYNC & UTILITIES ---
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js')
             .then(reg => console.log('Service Worker registered.'))
             .catch(err => console.error('Service Worker registration failed:', err));
-    }
-}
-async function syncToLocalStorage() {
-    try {
-        const allAccounts = await db.dbGetAll('accounts');
-        const allTransactions = await db.dbGetAll('transactions');
-        localStorage.setItem('checkbook_backup', JSON.stringify({ accounts: allAccounts, transactions: allTransactions }));
-    } catch (error) { console.error("Failed to back up to LocalStorage:", error); }
-}
-
-async function syncFromLocalStorage() {
-    const count = await db.dbCount('accounts');
-    if (count === 0) {
-        const backupJson = localStorage.getItem('checkbook_backup');
-        if (backupJson) {
-            console.log("Restoring from LocalStorage backup.");
-            const backup = JSON.parse(backupJson);
-            if (backup.accounts && backup.transactions) {
-                 for (const account of backup.accounts) { delete account.id; await db.dbAdd('accounts', account); }
-                 for (const tx of backup.transactions) { delete tx.id; await db.dbAdd('transactions', tx); }
-            }
-        }
     }
 }
     
