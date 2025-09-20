@@ -76,7 +76,8 @@
             <h2>Add Transaction</h2>
             <form id="add-transaction-form">
                 <label for="transaction-code">Code:</label>
-                <input list="transaction-codes-list" id="transaction-code" name="transaction-code" placeholder="Check # or Code">
+                <!-- === THIS LINE HAS BEEN UPDATED === -->
+                <input list="transaction-codes-list" id="transaction-code" name="transaction-code" placeholder="Check # or Code" autocomplete="off">
                 <label for="transaction-date">Date:</label>
                 <input type="date" id="transaction-date" required>
                 <label for="transaction-description">Description:</label>
@@ -149,13 +150,13 @@
     </div>
 
     <datalist id="transaction-codes-list">
-        <option value="DC"></option>
-        <option value="ATM"></option>
-        <option value="AD"></option>
-        <option value="AP"></option>
-        <option value="BP"></option>
-        <option value="T"></option>
-        <option value="I"></option>
+        <option value="DC">[D]ebit [C]ard</option>
+        <option value="ATM">[ATM] Teller Withdrawal</option>
+        <option value="AD">[A]uto [D]eposit</option>
+        <option value="AP">[A]uto [P]ayment</option>
+        <option value="BP">[B]ill [P]ay</option>
+        <option value="T">[T]ransfer</option>
+        <option value="I">[I]nterest</option>
     </datalist>
 
     <script src="script.js" type="module"></script>
