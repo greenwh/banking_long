@@ -5,7 +5,7 @@ import * as io from './data-io.js';
 
 // --- APPLICATION STATE ---
 let currentAccountId = null;
-let transactions = []; // Holds transactions for the CURRENT account only
+let transactions = [];
 let filters = JSON.parse(localStorage.getItem('checkbook_filters')) || {
     startDate: '', endDate: '', description: '', reconciled: 'all', amount: '', sortOrder: 'oldest'
 };
@@ -14,24 +14,38 @@ let filters = JSON.parse(localStorage.getItem('checkbook_filters')) || {
 const modals = {
     account: document.getElementById('account-modal'),
     add: document.getElementById('add-transaction-modal'),
-    filter: document.getElementById('filter-modal')
+    filter: document.getElementById('filter-modal'),
+    csvOptions: document.getElementById('csv-options-modal')
 };
 const transactionBody = document.getElementById('transaction-body');
 const accountSelect = document.getElementById('account-select');
 const accountNameHeader = document.getElementById('account-name-header');
+let csvImportPlan = null;
 
 // --- CORE APPLICATION FLOW ---
 async function loadApp() {
     await loadAccounts();
     const lastAccountId = localStorage.getItem('checkbook_lastAccountId');
-    currentAccountId = lastAccountId ? parseInt(lastAccountId) : (accountSelect.options[0] && accountSelect.options[0].value ? parseInt(accountSelect.value) : null);
-    
+
+    // Robustly determine the current account ID
+    let determinedAccountId = null;
+    if (lastAccountId) {
+        determinedAccountId = parseInt(lastAccountId);
+    } else if (accountSelect.options.length > 0) {
+        // **THE FIX**: Directly use the value from the first option,
+        // which is more reliable than accountSelect.value on initial load.
+        determinedAccountId = parseInt(accountSelect.options[0].value);
+    }
+    currentAccountId = determinedAccountId;
+
     if (currentAccountId) {
         accountSelect.value = currentAccountId;
+        // Also save this choice back to localStorage for the next page load
+        localStorage.setItem('checkbook_lastAccountId', currentAccountId);
         await loadTransactionsForCurrentAccount();
     } else {
         accountNameHeader.textContent = "Create an Account";
-        render();
+        render(); // Render an empty state
     }
     setupEventListeners();
     registerServiceWorker();
@@ -158,31 +172,58 @@ function setupEventListeners() {
     document.getElementById('purge-btn').addEventListener('click', handlePurge);
     document.getElementById('save-btn').addEventListener('click', io.handleJsonExport);
     document.getElementById('load-btn').addEventListener('click', () => document.getElementById('json-import').click());
-    document.getElementById('json-import').addEventListener('change', async (e) => {
-        if (!e.target.files.length) return;
-        try {
-            const success = await io.handleJsonImport(e.target.files[0]);
-            if (success) {
-                localStorage.removeItem('checkbook_lastAccountId');
-                await loadApp();
-            }
-        } catch(err) { console.error(err.message); }
-        e.target.value = '';
+    
+    document.getElementById('csv-confirm-import-btn').addEventListener('click', async () => {
+        if (!csvImportPlan) return;
+        const shouldReconcileNew = document.getElementById('csv-reconcile-new-checkbox').checked;
+        await io.executeCsvImport(csvImportPlan, shouldReconcileNew);
+        await loadTransactionsForCurrentAccount();
+        modals.csvOptions.style.display = 'none';
+        csvImportPlan = null;
     });
+    document.getElementById('csv-cancel-import-btn').addEventListener('click', () => {
+        modals.csvOptions.style.display = 'none';
+        csvImportPlan = null;
+    });
+
+document.getElementById('json-import').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const success = await io.handleJsonImport(file);
+        if (success) {
+            // Clear the last used account ID before reloading
+            localStorage.removeItem('checkbook_lastAccountId');
+            // A full reload is the most robust way to reset the app's state
+            location.reload();
+        }
+    } catch(err) {
+        // This will catch the "Import cancelled by user" error and prevent it from polluting the console
+        console.warn(err.message);
+    } finally {
+        // Clear the file input to allow re-importing the same file if needed
+        e.target.value = '';
+    }
+});
+
     document.getElementById('csv-import').addEventListener('change', async (e) => {
-        if (!e.target.files.length) return;
+        const file = e.target.files[0];
+        if (!file) return;
         if (!currentAccountId) {
             alert("Please select an account before importing.");
             e.target.value = '';
             return;
         }
         try {
-            const success = await io.handleCsvImport(e.target.files[0], currentAccountId, transactions);
-            if (success) {
-                await loadTransactionsForCurrentAccount();
-            }
-        } catch(err) { console.error(err.message); }
-        e.target.value = '';
+            csvImportPlan = await io.processCsvFile(file, currentAccountId, transactions);
+            document.getElementById('csv-summary-text').textContent = csvImportPlan.summary;
+            document.getElementById('csv-reconcile-new-checkbox').checked = false;
+            modals.csvOptions.style.display = 'block';
+        } catch(err) {
+            alert(`CSV Processing Error: ${err.message}`);
+        } finally {
+            e.target.value = '';
+        }
     });
 }
 
@@ -359,5 +400,4 @@ async function main() {
     await loadApp();
 }
 
-// **FIX:** Start the application by calling the main function.
 main().catch(console.error);

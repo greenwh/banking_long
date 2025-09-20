@@ -26,12 +26,11 @@ body {
     align-items: center;
 }
 
-/* Corrected rule for all buttons and the CSV label */
 .top-bar button, .btn-style-label {
     background-color: #3498db;
     color: white;
     border: none;
-    padding: 0 12px; /* Use padding for width, not fixed width */
+    padding: 0 12px;
     border-radius: 8px;
     height: 36px;
     font-size: 14px;
@@ -42,8 +41,8 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-sizing: border-box; /* Ensures padding is included in height/width */
-    line-height: 1; /* Prevents text from affecting height */
+    box-sizing: border-box;
+    line-height: 1;
 }
 
 .top-bar button:hover, .btn-style-label:hover {
@@ -139,7 +138,21 @@ body {
 .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
 .modal-content button { width: 100%; padding: 10px; margin-top: 15px; background-color: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; }
 .modal-content button:hover { background-color: #2980b9; }
+
 #delete-account-btn { background-color: #e74c3c; }
 #delete-account-btn:hover { background-color: #c0392b; }
-#clear-filter-btn { background-color: #95a5a6; }
-#clear-filter-btn:hover { background-color: #7f8c8d; }
+#clear-filter-btn, .modal-content button.cancel-btn { background-color: #95a5a6; }
+#clear-filter-btn:hover, .modal-content button.cancel-btn:hover { background-color: #7f8c8d; }
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+}
+.checkbox-container input[type="checkbox"] {
+    width: auto;
+    margin-right: 10px;
+}
+.checkbox-container label {
+    margin-top: 0;
+}

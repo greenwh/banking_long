@@ -2,9 +2,7 @@
 
 import * as db from './database.js';
 
-/**
- * Exports all accounts and transactions to a JSON file.
- */
+// --- JSON IMPORT/EXPORT ---
 export async function handleJsonExport() {
     if (!confirm("This will export ALL accounts and transactions. Continue?")) return;
     try {
@@ -27,11 +25,6 @@ export async function handleJsonExport() {
     }
 }
 
-/**
- * Imports a JSON file, replacing all existing data.
- * @param {File} file The JSON file to import.
- * @returns {Promise<boolean>} A promise that resolves to true if successful.
- */
 export function handleJsonImport(file) {
     return new Promise((resolve, reject) => {
         if (!confirm("WARNING: This will replace ALL current data. This cannot be undone. Are you sure?")) {
@@ -42,10 +35,35 @@ export function handleJsonImport(file) {
             try {
                 const data = JSON.parse(event.target.result);
                 if (!data.accounts || !data.transactions) throw new Error("Invalid file format");
+
+                // Clear existing data
                 await db.dbClear('transactions');
                 await db.dbClear('accounts');
-                for (const account of data.accounts) { delete account.id; await db.dbAdd('accounts', account); }
-                for (const tx of data.transactions) { delete tx.id; await db.dbAdd('transactions', tx); }
+
+                // Create a map to track old account IDs to new ones
+                const accountIdMap = new Map();
+
+                // Process accounts and populate the map
+                for (const account of data.accounts) {
+                    const oldId = account.id;
+                    delete account.id; // Let IndexedDB generate a new key
+                    const newId = await db.dbAdd('accounts', account);
+                    accountIdMap.set(oldId, newId);
+                }
+
+                // Process transactions, updating their accountId foreign key
+                for (const tx of data.transactions) {
+                    const oldAccountId = tx.accountId;
+                    const newAccountId = accountIdMap.get(oldAccountId);
+
+                    if (newAccountId) {
+                        tx.accountId = newAccountId; // Update to the new foreign key
+                        delete tx.id; // Let IndexedDB generate a new key
+                        await db.dbAdd('transactions', tx);
+                    }
+                    // Transactions without a matching new account will be skipped
+                }
+
                 alert("Import successful! Reloading application.");
                 resolve(true);
             } catch (error) {
@@ -58,33 +76,22 @@ export function handleJsonImport(file) {
     });
 }
 
-/**
- * Imports a CSV file, attempts to reconcile with existing transactions, and adds new ones.
- * @param {File} file The CSV file to import.
- * @param {number} currentAccountId The ID of the account to import into.
- * @param {Array<Object>} existingTxs The existing transactions for the current account.
- * @returns {Promise<boolean>} A promise that resolves to true if successful.
- */
-export function handleCsvImport(file, currentAccountId, existingTxs) {
+
+// --- CSV IMPORT SYSTEM ---
+export function processCsvFile(file, currentAccountId, existingTxs) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = async (event) => {
+        reader.onload = (event) => {
             try {
                 const parsedTxs = parseCsv(event.target.result, currentAccountId);
                 if (parsedTxs.length === 0) throw new Error("No valid transactions found in the file.");
 
                 const { toUpdate, toAdd } = reconcileTransactions(parsedTxs, existingTxs);
+                const summary = `This will reconcile ${toUpdate.length} existing transaction(s) and add ${toAdd.length} new one(s).`;
+                
+                resolve({ toUpdate, toAdd, summary });
 
-                if (confirm(`Reconcile ${toUpdate.length} and add ${toAdd.length} new transactions?`)) {
-                    for (const tx of toUpdate) await db.dbPut('transactions', tx);
-                    for (const tx of toAdd) await db.dbAdd('transactions', tx);
-                    alert(`Reconciliation complete. ${toUpdate.length} updated, ${toAdd.length} added.`);
-                    resolve(true);
-                } else {
-                    reject(new Error("CSV import cancelled by user."));
-                }
             } catch (error) {
-                alert("CSV Import Error: " + error.message);
                 reject(error);
             }
         };
@@ -93,78 +100,105 @@ export function handleCsvImport(file, currentAccountId, existingTxs) {
     });
 }
 
-/**
- * Parses a raw CSV string into an array of transaction objects.
- * @param {string} csv The raw CSV text content.
- * @param {number} accountId The ID to assign to the new transactions.
- * @returns {Array<Object>}
- */
+export async function executeCsvImport(plan, reconcileNew) {
+    if (reconcileNew) {
+        plan.toAdd.forEach(tx => tx.reconciled = true);
+    }
+    for (const tx of plan.toUpdate) await db.dbPut('transactions', tx);
+    for (const tx of plan.toAdd) await db.dbAdd('transactions', tx);
+    
+    alert(`Import complete. ${plan.toUpdate.length} updated, ${plan.toAdd.length} added.`);
+}
+
+const csvParserProfiles = [{
+    name: 'Bank Format 1 (Credit/Debit Columns)',
+    header_signature: 'Account,Date,Pending?,Description,Category,Check,Credit,Debit',
+    parse: (row, accountId) => {
+        const credit = parseFloat(row[6]) || 0;
+        const debit = parseFloat(row[7]) || 0;
+        const amount = credit + debit;
+        return {
+            date: new Date(row[1]).toISOString().split('T')[0],
+            description: row[3],
+            deposit: amount > 0 ? amount : 0,
+            withdrawal: amount < 0 ? -amount : 0,
+            accountId, code: '', reconciled: false
+        };
+    }
+}, {
+    name: 'Bank Format 2 (Single Amount Column)',
+    header_signature: 'Date,Description,Original Description,Category,Amount,Status',
+    parse: (row, accountId) => {
+        const amount = parseFloat(row[4]);
+        return {
+            date: new Date(row[0]).toISOString().split('T')[0],
+            description: row[1],
+            deposit: amount > 0 ? amount : 0,
+            withdrawal: amount < 0 ? -amount : 0,
+            accountId, code: '', reconciled: false
+        };
+    }
+}];
+
 function parseCsv(csv, accountId) {
     const lines = csv.split(/\r\n|\n/).filter(line => line.trim());
     if (lines.length < 2) return [];
 
     const header = lines.shift().trim();
-    const format1Sig = 'Account,Date,Pending?,Description,Category,Check,Credit,Debit';
-    const format2Sig = 'Date,Description,Original Description,Category,Amount,Status';
-    let format;
-    if (header.includes(format1Sig)) format = 'format1';
-    else if (header.includes(format2Sig)) format = 'format2';
-    else throw new Error("CSV header does not match known bank formats.");
+    const profile = csvParserProfiles.find(p => header.includes(p.header_signature));
+    if (!profile) throw new Error("CSV header does not match any known bank format.");
 
+    // This new, more robust parsing logic correctly handles empty and quoted fields.
     return lines.map(line => {
-        const data = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g).map(d => d.trim().replace(/"/g, ''));
-        const tx = { accountId: accountId, reconciled: false, code: 'CSV' };
-        if (format === 'format1') {
-            tx.date = new Date(data[1]).toISOString().split('T')[0];
-            tx.description = data[3];
-            tx.deposit = parseFloat(data[6]) || 0;
-            tx.withdrawal = parseFloat(data[7]) || 0;
-        } else { // format2
-            tx.date = new Date(data[0]).toISOString().split('T')[0];
-            tx.description = data[1];
-            const amount = parseFloat(data[4]);
-            tx.deposit = amount > 0 ? amount : 0;
-            tx.withdrawal = amount < 0 ? -amount : 0;
+        const row = [];
+        let currentVal = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                // Toggle the inQuotes flag, unless it's an escaped quote ("")
+                if (inQuotes && line[i + 1] === '"') {
+                    currentVal += '"';
+                    i++; // Skip the next character
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                row.push(currentVal.trim());
+                currentVal = "";
+            } else {
+                currentVal += char;
+            }
         }
-        return tx;
+        row.push(currentVal.trim()); // Add the last value
+        return profile.parse(row, accountId);
     });
 }
 
-/**
- * Compares parsed CSV transactions with existing ones to find matches for reconciliation.
- * @param {Array<Object>} parsedTxs Transactions from the CSV file.
- * @param {Array<Object>} existingTxs Unreconciled transactions from the database.
- * @returns {{toUpdate: Array<Object>, toAdd: Array<Object>}}
- */
 function reconcileTransactions(parsedTxs, existingTxs) {
     const toUpdate = [];
     const toAdd = [];
-    const oneDay = 86400000; // milliseconds in a day
-
+    const oneDay = 86400000;
     let availableTxs = existingTxs.filter(tx => !tx.reconciled);
 
     parsedTxs.forEach(pTx => {
         const pTxDate = new Date(pTx.date).getTime();
-        const pTxAmount = pTx.deposit > 0 ? pTx.deposit : -pTx.withdrawal;
+        const pTxAmount = pTx.deposit > 0 ? pTx.deposit : -(pTx.withdrawal);
 
         const matchIndex = availableTxs.findIndex(eTx => {
             const eTxDate = new Date(eTx.date).getTime();
-            const eTxAmount = (eTx.deposit > 0 ? eTx.deposit : -eTx.withdrawal);
+            const eTxAmount = (eTx.deposit > 0 ? eTx.deposit : -(eTx.withdrawal));
             const dateDiff = Math.abs(pTxDate - eTxDate);
             const amountDiff = Math.abs(pTxAmount - eTxAmount);
-
-            // Match if amounts are identical and date is within +/- 1 day
             return amountDiff < 0.01 && dateDiff <= oneDay;
         });
 
         if (matchIndex > -1) {
-            // Found a match
             const matchedTx = availableTxs[matchIndex];
-            matchedTx.reconciled = true; // Mark for update
+            matchedTx.reconciled = true;
             toUpdate.push(matchedTx);
-            availableTxs.splice(matchIndex, 1); // Remove from pool to prevent double-matching
+            availableTxs.splice(matchIndex, 1);
         } else {
-            // No match found, mark for addition
             toAdd.push(pTx);
         }
     });

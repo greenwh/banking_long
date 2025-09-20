@@ -16,9 +16,9 @@
             <button id="add-btn">Add</button>
             <button id="filter-btn">Filter</button>
             <button id="purge-btn">Purge</button>
-            <button id="save-btn">Save</button>
-            <button id="load-btn">Load</button>
-            <label for="csv-import" class="btn-style-label">Import</label>
+            <button id="save-btn">Save (JSON)</button>
+            <button id="load-btn">Load (JSON)</button>
+            <label for="csv-import" class="btn-style-label">Import CSV</label>
             <input type="file" id="csv-import" accept=".csv" style="display: none;">
             <input type="file" id="json-import" accept=".json" style="display: none;">
         </div>
@@ -48,7 +48,7 @@
                     </tr>
                 </thead>
                 <tbody id="transaction-body">
-                    <!-- Transactions will be dynamically inserted here -->
+                    <!-- Transactions dynamically inserted here -->
                 </tbody>
             </table>
         </div>
@@ -119,15 +119,29 @@
             </form>
         </div>
     </div>
+    
+    <div id="csv-options-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>CSV Import Options</h2>
+            <p id="csv-summary-text">Summary will appear here.</p>
+            <div class="checkbox-container">
+                <input type="checkbox" id="csv-reconcile-new-checkbox">
+                <label for="csv-reconcile-new-checkbox">Mark all newly added transactions as reconciled</label>
+            </div>
+            <button id="csv-confirm-import-btn">Confirm Import</button>
+            <button id="csv-cancel-import-btn" class="cancel-btn">Cancel</button>
+        </div>
+    </div>
 
     <datalist id="transaction-codes-list">
-        <option value="DC">Debit Card</option>
-        <option value="ATM">ATM Teller Withdrawal</option>
-        <option value="AD">Automatic Deposit</option>
-        <option value="AP">Automatic Payment</option>
-        <option value="BP">Online Bill Pay</option>
-        <option value="T">Online or Phone Transfer</option>
-        <option value="I">Interest</option>
+        <option value="DC"></option>
+        <option value="ATM"></option>
+        <option value="AD"></option>
+        <option value="AP"></option>
+        <option value="BP"></option>
+        <option value="T"></option>
+        <option value="I"></option>
     </datalist>
 
     <script src="script.js" type="module"></script>
