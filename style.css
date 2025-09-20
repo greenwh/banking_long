@@ -80,7 +80,7 @@ body {
 }
 
 .transaction-register .col-code { width: 170px; min-width: 70px;}
-.transaction-register .col-date { width: 120px; text-align: left;}
+.transaction-register .col-date { width: 120px; text-align: center;}
 .transaction-register .col-withdrawal, .transaction-register .col-deposit { width: 120px; text-align: right; }
 .transaction-register .col-reconciled { width: 40px; text-align: center; }
 .transaction-register .col-balance { width: 140px; text-align: right; }
