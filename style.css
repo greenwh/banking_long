@@ -141,14 +141,12 @@ body {
 .transaction-register .col-withdrawal input, .transaction-register .col-deposit input {
     text-align: right;
 }
-/* Center the Date column header */
-.transaction-register th.col-date {
-    text-align: center;
+.transaction-register .col-date input {
+    text-align: left;
 }
 
-/* Center the date value in the input field */
-.transaction-register .col-date input {
-    text-align: center;
+.transaction-register .col-date input::-webkit-date-and-time-value {
+    text-align: left;
 }
 .balance-negative { color: #e74c3c; font-weight: bold; }
 
