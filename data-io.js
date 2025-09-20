@@ -138,6 +138,22 @@ const csvParserProfiles = [{
             accountId, code: '', reconciled: false
         };
     }
+}, { // --- NEW PROFILE ADDED HERE ---
+    name: 'Bank Format 3 (Posted Date with Debit/Credit)',
+    header_signature: 'Account Number,Post Date,Check,Description,Debit,Credit',
+    parse: (row, accountId) => {
+        const debit = parseFloat(row[4]) || 0;
+        const credit = parseFloat(row[5]) || 0;
+        return {
+            date: new Date(row[1]).toISOString().split('T')[0],
+            description: row[3],
+            deposit: credit,
+            withdrawal: debit,
+            accountId, 
+            code: row[2] || '', // Use the check number if it exists
+            reconciled: false
+        };
+    }
 }];
 
 function parseCsv(csv, accountId) {

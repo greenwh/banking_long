@@ -48,6 +48,9 @@ The application is designed to parse two common bank CSV formats. The header row
 2.  **Format 2 (Single Amount Column)**
     *   **Header Signature**: `Date,Description,Original Description,Category,Amount,Status`
 
+3.  **Format 3 (Posted Date with Debit/Credit)**
+    *   **Header Signature**: `Account Number,Post Date,Check,Description,Debit,Credit`
+
 If your bank's CSV format is different, you may need to adjust the column headers to match one of the profiles above.
 
 ## File Structure
