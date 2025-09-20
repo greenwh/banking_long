@@ -83,7 +83,8 @@ async function loadTransactionsForCurrentAccount() {
 
 // --- UI RENDERING ---
 function render() {
-    let displayTxs = transactions.filter(tx => {
+    // Step 1: Apply all user filters to get the relevant transactions.
+    let filteredTxs = transactions.filter(tx => {
         if (filters.startDate && new Date(tx.date) < new Date(filters.startDate)) return false;
         if (filters.endDate && new Date(tx.date) > new Date(filters.endDate)) return false;
         if (filters.description && !tx.description.toLowerCase().includes(filters.description.toLowerCase())) return false;
@@ -96,22 +97,36 @@ function render() {
             if (parseFloat(tx.withdrawal) !== amount && parseFloat(tx.deposit) !== amount) return false;
         }
         return true;
-    }).sort((a, b) => {
+    });
+
+    // Step 2: Create a chronologically sorted copy to correctly calculate balances.
+    let chronoSortedTxs = [...filteredTxs].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Step 3: Calculate and attach the correct running balance to each transaction object.
+    let finalBalance = 0;
+    chronoSortedTxs.forEach(tx => {
+        finalBalance += (parseFloat(tx.deposit) || 0) - (parseFloat(tx.withdrawal) || 0);
+        tx.runningBalance = finalBalance; // Attach the calculated balance to the object.
+    });
+
+    // Step 4: Now, sort the augmented array for the final display order based on user's choice.
+    let displayTxs = chronoSortedTxs.sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
         if (dateA.getTime() === dateB.getTime()) return 0;
         return filters.sortOrder === 'oldest' ? dateA - dateB : dateB - dateA;
     });
 
+    // Step 5: Render the UI with the pre-calculated balances.
     transactionBody.innerHTML = '';
-    let runningBalance = 0;
     displayTxs.forEach(tx => {
-        runningBalance += (parseFloat(tx.deposit) || 0) - (parseFloat(tx.withdrawal) || 0);
-        transactionBody.appendChild(createTransactionRow(tx, runningBalance));
+        // Pass the correct, pre-calculated balance to the rendering function.
+        transactionBody.appendChild(createTransactionRow(tx, tx.runningBalance));
     });
 
+    // Add the blank "new transaction" row, using the correct final balance.
     if (currentAccountId) {
-        transactionBody.appendChild(createTransactionRow(null, runningBalance));
+        transactionBody.appendChild(createTransactionRow(null, finalBalance));
     }
 }
 
