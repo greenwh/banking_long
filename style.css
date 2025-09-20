@@ -79,8 +79,8 @@ body {
     white-space: nowrap;
 }
 
-.transaction-register .col-code { width: 170px; }
-.transaction-register .col-date { width: 150px; }
+.transaction-register .col-code { width: 170px; min-width: 70px;}
+.transaction-register .col-date { width: 120px; text-align: left;}
 .transaction-register .col-withdrawal, .transaction-register .col-deposit { width: 120px; text-align: right; }
 .transaction-register .col-reconciled { width: 40px; text-align: center; }
 .transaction-register .col-balance { width: 140px; text-align: right; }
@@ -118,7 +118,20 @@ body {
     border: 1px solid #3498db;
     background: white;
 }
+/* For Chrome, Safari, Edge, Opera */
+.transaction-register .col-withdrawal input[type="number"]::-webkit-outer-spin-button,
+.transaction-register .col-withdrawal input[type="number"]::-webkit-inner-spin-button,
+.transaction-register .col-deposit input[type="number"]::-webkit-outer-spin-button,
+.transaction-register .col-deposit input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
 
+/* For Firefox */
+.transaction-register .col-withdrawal input[type="number"],
+.transaction-register .col-deposit input[type="number"] {
+    -moz-appearance: textfield;
+}
 /* --- THIS NEW RULE IS THE FIX --- */
 /* Target only the input with the datalist to account for the browser's dropdown arrow */
 .transaction-register .col-code input {

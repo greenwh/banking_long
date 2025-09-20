@@ -146,7 +146,7 @@ function createTransactionRow(tx, balance) {
     };
 
     row.innerHTML = `
-        <td class="col-code"><input type="text" list="transaction-codes-list" value="${txData.code}" placeholder="Code/Chk #" data-field="code"></td>
+        <td class="col-code"><input type="text" list="transaction-codes-list" value="${txData.code}" placeholder="Cd/Ch#" data-field="code"></td>
         <td class="col-date"><input type="date" value="${txData.date ? txData.date.split('T')[0] : ''}" data-field="date"></td>
         <td class="col-description"><input type="text" value="${txData.description}" placeholder="Description" data-field="description"></td>
         <td class="col-withdrawal"><input type="number" step="0.01" value="${formatAmountForInput(txData.withdrawal)}" placeholder="0.00" data-field="withdrawal"></td>

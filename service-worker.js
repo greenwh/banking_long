@@ -1,4 +1,4 @@
-const CACHE_NAME = 'checkbook-cache-v2';
+const CACHE_NAME = 'checkbook-cache-v3';
 const urlsToCache = [ '/', '/index.html', '/style.css', '/script.js', '/database.js', '/data-io.js', '/manifest.json' ];
 
 self.addEventListener('install', event => {
