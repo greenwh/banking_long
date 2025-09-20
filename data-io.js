@@ -13,8 +13,15 @@ export async function handleJsonExport() {
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
+
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const day = today.getDate().toString().padStart(2, '0');
+        const localDateString = `${year}-${month}-${day}`;
+        a.download = `checkbook_backup_${localDateString}.json`;
+
         a.href = url;
-        a.download = `checkbook_backup_${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -36,32 +43,26 @@ export function handleJsonImport(file) {
                 const data = JSON.parse(event.target.result);
                 if (!data.accounts || !data.transactions) throw new Error("Invalid file format");
 
-                // Clear existing data
                 await db.dbClear('transactions');
                 await db.dbClear('accounts');
 
-                // Create a map to track old account IDs to new ones
                 const accountIdMap = new Map();
 
-                // Process accounts and populate the map
                 for (const account of data.accounts) {
                     const oldId = account.id;
-                    delete account.id; // Let IndexedDB generate a new key
+                    delete account.id;
                     const newId = await db.dbAdd('accounts', account);
                     accountIdMap.set(oldId, newId);
                 }
 
-                // Process transactions, updating their accountId foreign key
                 for (const tx of data.transactions) {
                     const oldAccountId = tx.accountId;
                     const newAccountId = accountIdMap.get(oldAccountId);
-
                     if (newAccountId) {
-                        tx.accountId = newAccountId; // Update to the new foreign key
-                        delete tx.id; // Let IndexedDB generate a new key
+                        tx.accountId = newAccountId;
+                        delete tx.id;
                         await db.dbAdd('transactions', tx);
                     }
-                    // Transactions without a matching new account will be skipped
                 }
 
                 alert("Import successful! Reloading application.");
@@ -116,12 +117,11 @@ const csvParserProfiles = [{
     parse: (row, accountId) => {
         const credit = parseFloat(row[6]) || 0;
         const debit = parseFloat(row[7]) || 0;
-        const amount = credit + debit;
         return {
             date: new Date(row[1]).toISOString().split('T')[0],
             description: row[3],
-            deposit: amount > 0 ? amount : 0,
-            withdrawal: amount < 0 ? -amount : 0,
+            deposit: credit,
+            withdrawal: debit,
             accountId, code: '', reconciled: false
         };
     }
@@ -148,7 +148,6 @@ function parseCsv(csv, accountId) {
     const profile = csvParserProfiles.find(p => header.includes(p.header_signature));
     if (!profile) throw new Error("CSV header does not match any known bank format.");
 
-    // This new, more robust parsing logic correctly handles empty and quoted fields.
     return lines.map(line => {
         const row = [];
         let currentVal = "";
@@ -156,10 +155,9 @@ function parseCsv(csv, accountId) {
         for (let i = 0; i < line.length; i++) {
             const char = line[i];
             if (char === '"') {
-                // Toggle the inQuotes flag, unless it's an escaped quote ("")
                 if (inQuotes && line[i + 1] === '"') {
                     currentVal += '"';
-                    i++; // Skip the next character
+                    i++;
                 } else {
                     inQuotes = !inQuotes;
                 }
@@ -170,7 +168,7 @@ function parseCsv(csv, accountId) {
                 currentVal += char;
             }
         }
-        row.push(currentVal.trim()); // Add the last value
+        row.push(currentVal.trim());
         return profile.parse(row, accountId);
     });
 }

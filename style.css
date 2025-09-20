@@ -79,8 +79,8 @@ body {
     white-space: nowrap;
 }
 
-.transaction-register .col-code { width: 130px; }
-.transaction-register .col-date { width: 140px; }
+.transaction-register .col-code { width: 170px; }
+.transaction-register .col-date { width: 150px; }
 .transaction-register .col-withdrawal, .transaction-register .col-deposit { width: 120px; text-align: right; }
 .transaction-register .col-reconciled { width: 40px; text-align: center; }
 .transaction-register .col-balance { width: 140px; text-align: right; }
@@ -105,17 +105,26 @@ body {
 .transaction-register tbody tr:hover { background-color: #cceeff; }
 
 .transaction-register input {
-    width: 95%;
+    width: 100%;
     border: 1px solid transparent;
     background: transparent;
     padding: 2px;
     box-sizing: border-box;
+    font-family: inherit;
+    font-size: inherit;
 }
 .transaction-register input:focus {
     outline: none;
     border: 1px solid #3498db;
     background: white;
 }
+
+/* --- THIS NEW RULE IS THE FIX --- */
+/* Target only the input with the datalist to account for the browser's dropdown arrow */
+.transaction-register .col-code input {
+    width: 98%;
+}
+
 .transaction-register .col-withdrawal input, .transaction-register .col-deposit input {
     text-align: right;
 }

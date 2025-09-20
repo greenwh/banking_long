@@ -23,6 +23,19 @@ const accountSelect = document.getElementById('account-select');
 const accountNameHeader = document.getElementById('account-name-header');
 let csvImportPlan = null;
 
+// --- HELPERS ---
+/**
+ * Gets the current local date in YYYY-MM-DD format.
+ * @returns {string} The formatted local date string.
+ */
+function getLocalYYYYMMDD() {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // JS months are 0-indexed
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // --- CORE APPLICATION FLOW ---
 async function loadApp() {
     await loadAccounts();
@@ -123,7 +136,7 @@ function render() {
 function createTransactionRow(tx, balance) {
     const row = document.createElement('tr');
     const isNewRow = !tx;
-    const txData = tx || { id: 'new', code: '', date: new Date().toISOString().split('T')[0], description: '', withdrawal: '', deposit: '', reconciled: false };
+    const txData = tx || { id: 'new', code: '', date: getLocalYYYYMMDD(), description: '', withdrawal: '', deposit: '', reconciled: false };
     row.dataset.id = txData.id;
     const balanceClass = balance < 0 ? 'class="balance-negative"' : '';
     
@@ -155,7 +168,7 @@ function setupEventListeners() {
     document.getElementById('account-btn').addEventListener('click', () => { modals.account.style.display = 'block'; });
     document.getElementById('add-btn').addEventListener('click', () => {
         document.getElementById('add-transaction-form').reset();
-        document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('transaction-date').value = getLocalYYYYMMDD();
         modals.add.style.display = 'block';
     });
     document.getElementById('filter-btn').addEventListener('click', () => {
@@ -168,7 +181,7 @@ function setupEventListeners() {
         modals.filter.style.display = 'block';
     });
     document.getElementById('purge-btn').addEventListener('click', () => {
-        document.getElementById('purge-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('purge-date').value = getLocalYYYYMMDD();
         modals.purge.style.display = 'block';
     });
     document.getElementById('purge-form').addEventListener('submit', handlePurge);
