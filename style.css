@@ -156,3 +156,5 @@ body {
 .checkbox-container label {
     margin-top: 0;
 }
+#confirm-purge-btn { background-color: #e74c3c; }
+#confirm-purge-btn:hover { background-color: #c0392b; }

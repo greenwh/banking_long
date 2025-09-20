@@ -15,7 +15,8 @@ const modals = {
     account: document.getElementById('account-modal'),
     add: document.getElementById('add-transaction-modal'),
     filter: document.getElementById('filter-modal'),
-    csvOptions: document.getElementById('csv-options-modal')
+    csvOptions: document.getElementById('csv-options-modal'),
+    purge: document.getElementById('purge-modal') // Add this line
 };
 const transactionBody = document.getElementById('transaction-body');
 const accountSelect = document.getElementById('account-select');
@@ -184,7 +185,17 @@ function setupEventListeners() {
     document.getElementById('add-transaction-form').addEventListener('submit', handleAddTransaction);
     document.getElementById('filter-form').addEventListener('submit', handleFilter);
     document.getElementById('clear-filter-btn').addEventListener('click', handleClearFilter);
-    document.getElementById('purge-btn').addEventListener('click', handlePurge);
+    //document.getElementById('purge-btn').addEventListener('click', handlePurge);
+    document.getElementById('purge-btn').addEventListener('click', () => {
+        document.getElementById('purge-date').value = new Date().toISOString().split('T')[0];
+        modals.purge.style.display = 'block';
+    });
+    
+    document.getElementById('purge-form').addEventListener('submit', handlePurge);
+    document.querySelector('#purge-modal .cancel-btn').addEventListener('click', () => {
+        modals.purge.style.display = 'none';
+    });
+    
     document.getElementById('save-btn').addEventListener('click', io.handleJsonExport);
     document.getElementById('load-btn').addEventListener('click', () => document.getElementById('json-import').click());
     
@@ -355,25 +366,34 @@ function handleClearFilter() {
     modals.filter.style.display = 'none';
 }
     
-async function handlePurge() {
-    const dateStr = prompt("Purge reconciled transactions BEFORE which date? (YYYY-MM-DD)");
-    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        if(dateStr !== null) alert("Invalid date format.");
+async function handlePurge(e) {
+    e.preventDefault(); // Prevent form from reloading page
+    const dateStr = document.getElementById('purge-date').value;
+    if (!dateStr) {
+        alert("Please select a date.");
         return;
     }
+
+    // The input type="date" value is already in YYYY-MM-DD format.
     const purgeDate = new Date(dateStr);
+    
+    // We add one day to the date so that "before 09-20" includes all transactions on 09-20.
+    purgeDate.setDate(purgeDate.getDate() + 1); 
+
     const txsToPurge = transactions.filter(tx => tx.reconciled && new Date(tx.date) < purgeDate);
 
-    if (txsToPurge.length > 0 && confirm(`This will permanently delete ${txsToPurge.length} reconciled transactions. Continue?`)) {
-        for (const tx of txsToPurge) {
-            await db.dbDelete('transactions', tx.id);
+    if (txsToPurge.length > 0) {
+        if (confirm(`This will permanently delete ${txsToPurge.length} reconciled transaction(s). Continue?`)) {
+            for (const tx of txsToPurge) {
+                await db.dbDelete('transactions', tx.id);
+            }
+            await loadTransactionsForCurrentAccount();
+            modals.purge.style.display = 'none';
         }
-        await loadTransactionsForCurrentAccount();
     } else {
-        alert("No matching reconciled transactions found to purge.");
+        alert("No reconciled transactions were found on or before the selected date.");
     }
-}
-    
+}    
 // --- PWA, SYNC & UTILITIES ---
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
