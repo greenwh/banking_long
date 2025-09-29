@@ -77,6 +77,39 @@ export function handleJsonImport(file) {
     });
 }
 
+// --- CSV EXPORT ---
+export function handleCsvExport(transactions, accountName) {
+    const header = `"Date","Code","Description","Deposit","Withdrawal","Reconciled"\n`;
+    const rows = transactions.map(tx => {
+        const description = `"${(tx.description || '').replace(/"/g, '""')}"`; // Handle quotes in description
+        return [
+            tx.date.split('T')[0],
+            tx.code || '',
+            description,
+            tx.deposit || 0,
+            tx.withdrawal || 0,
+            tx.reconciled
+        ].join(',');
+    }).join('\n');
+
+    const csvString = header + rows;
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const day = today.getDate().toString().padStart(2, '0');
+    const localDateString = `${year}-${month}-${day}`;
+    a.download = `checkbook_${accountName.replace(/\s+/g, '_')}_${localDateString}.csv`;
+    
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 
 // --- CSV IMPORT SYSTEM ---
 export function processCsvFile(file, currentAccountId, existingTxs) {
@@ -101,14 +134,24 @@ export function processCsvFile(file, currentAccountId, existingTxs) {
     });
 }
 
-export async function executeCsvImport(plan, reconcileNew) {
-    if (reconcileNew) {
-        plan.toAdd.forEach(tx => tx.reconciled = true);
+export async function executeCsvImport(plan, reconcileNew, isSyncMode) {
+    if (isSyncMode) {
+        // Sync Mode: Only add new transactions, ignore updates.
+        for (const tx of plan.toAdd) {
+            await db.dbAdd('transactions', tx);
+        }
+        alert(`Sync complete. ${plan.toAdd.length} new transaction(s) added.`);
+
+    } else {
+        // Standard Import Mode
+        if (reconcileNew) {
+            plan.toAdd.forEach(tx => tx.reconciled = true);
+        }
+        for (const tx of plan.toUpdate) await db.dbPut('transactions', tx);
+        for (const tx of plan.toAdd) await db.dbAdd('transactions', tx);
+        
+        alert(`Import complete. ${plan.toUpdate.length} updated, ${plan.toAdd.length} added.`);
     }
-    for (const tx of plan.toUpdate) await db.dbPut('transactions', tx);
-    for (const tx of plan.toAdd) await db.dbAdd('transactions', tx);
-    
-    alert(`Import complete. ${plan.toUpdate.length} updated, ${plan.toAdd.length} added.`);
 }
 
 const csvParserProfiles = [{
@@ -116,7 +159,7 @@ const csvParserProfiles = [{
     header_signature: 'Account,Date,Pending?,Description,Category,Check,Credit,Debit',
     parse: (row, accountId) => {
         const credit = parseFloat(row[6]) || 0;
-        const debit = parseFloat(row[7]) || 0;
+        const debit = Math.abs(parseFloat(row[7])) || 0; // Use absolute value
         return {
             date: new Date(row[1]).toISOString().split('T')[0],
             description: row[3],
@@ -138,11 +181,11 @@ const csvParserProfiles = [{
             accountId, code: '', reconciled: false
         };
     }
-}, { // --- NEW PROFILE ADDED HERE ---
+}, {
     name: 'Bank Format 3 (Posted Date with Debit/Credit)',
     header_signature: 'Account Number,Post Date,Check,Description,Debit,Credit',
     parse: (row, accountId) => {
-        const debit = parseFloat(row[4]) || 0;
+        const debit = Math.abs(parseFloat(row[4])) || 0; // Use absolute value
         const credit = parseFloat(row[5]) || 0;
         return {
             date: new Date(row[1]).toISOString().split('T')[0],
@@ -150,8 +193,23 @@ const csvParserProfiles = [{
             deposit: credit,
             withdrawal: debit,
             accountId, 
-            code: row[2] || '', // Use the check number if it exists
+            code: row[2] || '', 
             reconciled: false
+        };
+    }
+}, {
+    name: 'Checkbook Export Format',
+    // --- THIS IS THE CORRECTED LINE ---
+    header_signature: '"Date","Code","Description","Deposit","Withdrawal","Reconciled"',
+    parse: (row, accountId) => {
+        return {
+            date: new Date(row[0]).toISOString().split('T')[0],
+            code: row[1],
+            description: row[2],
+            deposit: parseFloat(row[3]) || 0,
+            withdrawal: parseFloat(row[4]) || 0,
+            reconciled: row[5] === 'true', // Convert string "true" to boolean
+            accountId,
         };
     }
 }];
@@ -193,26 +251,33 @@ function reconcileTransactions(parsedTxs, existingTxs) {
     const toUpdate = [];
     const toAdd = [];
     const oneDay = 86400000;
-    let availableTxs = existingTxs.filter(tx => !tx.reconciled);
+    let availableTxs = [...existingTxs]; // Create a mutable copy of ALL existing transactions
 
     parsedTxs.forEach(pTx => {
         const pTxDate = new Date(pTx.date).getTime();
         const pTxAmount = pTx.deposit > 0 ? pTx.deposit : -(pTx.withdrawal);
 
+        // Find a match based on date (within a day) and amount
         const matchIndex = availableTxs.findIndex(eTx => {
             const eTxDate = new Date(eTx.date).getTime();
-            const eTxAmount = (eTx.deposit > 0 ? eTx.deposit : -(eTx.withdrawal));
+            const eTxAmount = (eTx.deposit > 0 ? parseFloat(eTx.deposit) : -(parseFloat(eTx.withdrawal)));
             const dateDiff = Math.abs(pTxDate - eTxDate);
             const amountDiff = Math.abs(pTxAmount - eTxAmount);
             return amountDiff < 0.01 && dateDiff <= oneDay;
         });
 
         if (matchIndex > -1) {
+            // A match was found.
+            // In a normal import, we update its status if it's not already reconciled.
             const matchedTx = availableTxs[matchIndex];
-            matchedTx.reconciled = true;
-            toUpdate.push(matchedTx);
+            if (!matchedTx.reconciled) {
+                matchedTx.reconciled = true;
+                toUpdate.push(matchedTx);
+            }
+            // In any case, we remove it from the pool so it can't be matched again.
             availableTxs.splice(matchIndex, 1);
         } else {
+            // No match was found, so this is a new transaction to be added.
             toAdd.push(pTx);
         }
     });

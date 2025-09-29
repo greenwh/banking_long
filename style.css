@@ -34,6 +34,7 @@ body {
     border-radius: 8px;
     height: 36px;
     font-size: 14px;
+    font-weight: bold; /* === THIS LINE IS THE FIX === */
     cursor: pointer;
     transition: background-color 0.3s;
     -webkit-appearance: none;
@@ -132,8 +133,7 @@ body {
 .transaction-register .col-deposit input[type="number"] {
     -moz-appearance: textfield;
 }
-/* --- THIS NEW RULE IS THE FIX --- */
-/* Target only the input with the datalist to account for the browser's dropdown arrow */
+
 .transaction-register .col-code input {
     width: 98%;
 }
@@ -144,10 +144,10 @@ body {
 .transaction-register .col-date input {
     text-align: left;
 }
-
 .transaction-register .col-date input::-webkit-date-and-time-value {
     text-align: left;
 }
+
 .balance-negative { color: #e74c3c; font-weight: bold; }
 
 .delete-btn {

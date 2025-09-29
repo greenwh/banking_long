@@ -18,7 +18,9 @@
             <button id="purge-btn">Purge</button>
             <button id="save-btn">Save</button>
             <button id="load-btn">Load</button>
-            <label for="csv-import" class="btn-style-label">CSV</label>
+            <button id="export-csv-btn">Export CSV</button>
+            <!-- === THIS LINE HAS BEEN UPDATED === -->
+            <label for="csv-import" class="btn-style-label">Import CSV</label>
             <input type="file" id="csv-import" accept=".csv" style="display: none;">
             <input type="file" id="json-import" accept=".json" style="display: none;">
         </div>
@@ -76,7 +78,6 @@
             <h2>Add Transaction</h2>
             <form id="add-transaction-form">
                 <label for="transaction-code">Code:</label>
-                <!-- === THIS LINE HAS BEEN UPDATED === -->
                 <input list="transaction-codes-list" id="transaction-code" name="transaction-code" placeholder="Check # or Code" autocomplete="off">
                 <label for="transaction-date">Date:</label>
                 <input type="date" id="transaction-date" required>
@@ -126,6 +127,10 @@
             <span class="close-btn">&times;</span>
             <h2>CSV Import Options</h2>
             <p id="csv-summary-text">Summary will appear here.</p>
+            <div class="checkbox-container">
+                <input type="checkbox" id="csv-sync-mode-checkbox">
+                <label for="csv-sync-mode-checkbox">Sync mode: Only add new transactions (disables reconciliation)</label>
+            </div>
             <div class="checkbox-container">
                 <input type="checkbox" id="csv-reconcile-new-checkbox">
                 <label for="csv-reconcile-new-checkbox">Mark all newly added transactions as reconciled</label>

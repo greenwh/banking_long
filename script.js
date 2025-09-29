@@ -9,6 +9,7 @@ let transactions = [];
 let filters = JSON.parse(localStorage.getItem('checkbook_filters')) || {
     startDate: '', endDate: '', description: '', reconciled: 'all', amount: '', sortOrder: 'oldest'
 };
+let displayTxs = []; // Holds the currently filtered and sorted transactions for export
 
 // --- DOM ELEMENT CACHING ---
 const modals = {
@@ -116,7 +117,7 @@ function render() {
         tx.runningBalance = finalBalance;
     });
 
-    let displayTxs = chronoSortedTxs.sort((a, b) => {
+    displayTxs = chronoSortedTxs.sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
         if (dateA.getTime() === dateB.getTime()) return 0;
@@ -203,10 +204,22 @@ function setupEventListeners() {
     document.getElementById('save-btn').addEventListener('click', io.handleJsonExport);
     document.getElementById('load-btn').addEventListener('click', () => document.getElementById('json-import').click());
     
+    document.getElementById('export-csv-btn').addEventListener('click', () => {
+        if (!currentAccountId || displayTxs.length === 0) {
+            alert("There are no transactions in the current view to export.");
+            return;
+        }
+        const accountName = accountSelect.options[accountSelect.selectedIndex].text;
+        io.handleCsvExport(displayTxs, accountName);
+    });
+    
     document.getElementById('csv-confirm-import-btn').addEventListener('click', async () => {
         if (!csvImportPlan) return;
         const shouldReconcileNew = document.getElementById('csv-reconcile-new-checkbox').checked;
-        await io.executeCsvImport(csvImportPlan, shouldReconcileNew);
+        const isSyncMode = document.getElementById('csv-sync-mode-checkbox').checked;
+        
+        await io.executeCsvImport(csvImportPlan, shouldReconcileNew, isSyncMode);
+
         await loadTransactionsForCurrentAccount();
         modals.csvOptions.style.display = 'none';
         csvImportPlan = null;
@@ -244,6 +257,7 @@ function setupEventListeners() {
             csvImportPlan = await io.processCsvFile(file, currentAccountId, transactions);
             document.getElementById('csv-summary-text').textContent = csvImportPlan.summary;
             document.getElementById('csv-reconcile-new-checkbox').checked = false;
+            document.getElementById('csv-sync-mode-checkbox').checked = false; // Reset on new import
             modals.csvOptions.style.display = 'block';
         } catch(err) {
             alert(`CSV Processing Error: ${err.message}`);
