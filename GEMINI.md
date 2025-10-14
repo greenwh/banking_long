@@ -1,12 +1,12 @@
-# Bank Register Long (Checkbook PWA) Project Context
+# Project Overview
+A comprehensive, privacy-first Progressive Web App (PWA) that serves as a digital checkbook register. Built entirely with vanilla JavaScript, HTML5, and CSS3, it operates completely client-side using IndexedDB for local data storage. The application emphasizes user privacy by keeping all financial data local to the user's device with no server communication.
+
+## Bank Register Long (Checkbook PWA) Project Context
 **Project**: Digital Checkbook Progressive Web App
 **Current Status**: Fully Functional, Stable
 **Date Created**: September 2025
-**Last Updated**: September 29, 2025
+**Last Updated**: October 4, 2025
 **Location**: ../Bank_Register_Long/
-
-## Project Overview
-A comprehensive, privacy-first Progressive Web App (PWA) that serves as a digital checkbook register. Built entirely with vanilla JavaScript, HTML5, and CSS3, it operates completely client-side using IndexedDB for local data storage. The application emphasizes user privacy by keeping all financial data local to the user's device with no server communication.
 
 ## Architecture Overview
 ```
@@ -77,7 +77,8 @@ Bank_Register_Long/
 4. **Import/Export**:
    - Full JSON backup and restore
    - CSV import from bank statements (**4 supported formats**)
-   - Single-account sync via CSV Export/Import for multi-device data merging
+   - **CSV Export**: Export transactions to CSV for backup or sync
+   - **Multi-Device Sync**: CSV Export/Import "Sync mode" for merging transactions between devices without overwriting
 
 ### Database Schema
 ```sql
@@ -147,11 +148,13 @@ Account Number,Post Date,Check,Description,Debit,Credit
   - Transaction and account operations
   - Data integrity management
 
-### data-io.js (220 lines, 8.4KB)
+### data-io.js (~315 lines, updated Sep 28)
 - **Purpose**: Import/export functionality
 - **Key Features**:
   - JSON backup/restore with confirmation dialogs
   - CSV parsing with multiple format support
+  - **CSV Export**: Generate CSV files from current transaction view
+  - **Sync Mode**: Merge transactions from CSV without overwriting existing data
   - Intelligent transaction reconciliation
   - Date and amount matching algorithms
 
@@ -170,7 +173,7 @@ Account Number,Post Date,Check,Description,Debit,Credit
 - **Improved UI/UX** for transaction code selection and button consistency
 
 ### 🔄 Known Issues (from todo.txt)
-
+- **None**: todo.txt is empty (all known issues resolved as of Sep 28)
 
 ### 📊 Quality Metrics
 - **Size**: ~40MB data capacity with user prompts for annual purging
@@ -303,6 +306,60 @@ Account Number,Post Date,Check,Description,Debit,Credit
 - Efficient date-based indexing for large transaction volumes
 - Lazy loading and filtering for UI responsiveness
 - Optimized for mobile hardware constraints
+
+---
+
+## Recent Development Activity (September 2025)
+
+### Last 10 Commits
+```
+00deefa - documantation update (Sep 28)
+5ea167a - Fixed a bug in csv import and added the ability to export csv for syncing accounts accross devices (Sep 28)
+4ac1c67 - changed the drop down list for codes (Sep 20)
+87068fa - added another csv format (Sep 20)
+b1542b2 - again with the date header left (Sep 20)
+36e56c2 - again with the date header centering (Sep 20)
+d2a2f05 - trying date centering again (Sep 20)
+e30bee1 - service worker version increment (Sep 20)
+5b793a0 - tweaking date field alignment (Sep 20)
+49ae240 - tweaked date column (Sep 20)
+```
+
+### Major Update - September 28, 2025
+**Commit 5ea167a**: CSV Import Bug Fix + Multi-Device Sync Feature
+- **Files Changed**: 7 files, +443 lines added
+- **Key Changes**:
+  - Fixed critical bug in CSV import functionality
+  - Added CSV Export feature for backup and sync
+  - Implemented "Sync Mode" for merging transactions across devices
+  - Updated UI with Export CSV button
+  - Enhanced data-io.js with export logic (~95 lines added)
+  - Service worker version updated
+  - Style improvements for new functionality
+
+### Recent Focus Areas (Sep 20-28)
+1. **UI Polish**: Multiple commits fixing date field alignment and centering
+2. **Dropdown Enhancement**: Updated transaction code selection
+3. **CSV Formats**: Added support for additional bank CSV format
+4. **Documentation**: Updated README with sync instructions
+5. **Major Feature**: Multi-device sync capability via CSV
+
+### Current State (October 2025)
+**Uncommitted Changes**: 10 files modified
+- `.gitignore`
+- `Bank_Register_Long-project.md` (this context file)
+- `data-io.js`
+- `database.js`
+- `index.html`
+- `manifest.json`
+- `prompt.txt`
+- `script.js`
+- `service-worker.js`
+- `style.css`
+
+**Project Health**: Actively maintained with regular improvements. All known issues resolved.
+
+**Next Milestone**: Feature enhancements (analytics, reporting) now that core functionality is stable.
 
 ---
 **Next Action**: Update `todo.txt` to clear resolved issues. Begin planning the implementation for a new feature, such as spending categorization.
