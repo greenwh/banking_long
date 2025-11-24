@@ -392,16 +392,55 @@ async function handlePurge(e) {
 
     const txsToPurge = transactions.filter(tx => tx.reconciled && new Date(tx.date) < purgeDate);
 
-    if (txsToPurge.length > 0) {
-        if (confirm(`This will permanently delete ${txsToPurge.length} reconciled transaction(s). Continue?`)) {
-            for (const tx of txsToPurge) {
-                await db.dbDelete('transactions', tx.id);
-            }
-            await loadTransactionsForCurrentAccount();
-            modals.purge.style.display = 'none';
-        }
-    } else {
+    if (txsToPurge.length === 0) {
         alert("No reconciled transactions were found on or before the selected date.");
+        return;
+    }
+
+    // Calculate running balance through purge date
+    const sortedTxs = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    let openingBalance = 0;
+
+    for (const tx of sortedTxs) {
+        if (new Date(tx.date) < purgeDate) {
+            openingBalance += (parseFloat(tx.deposit) || 0) - (parseFloat(tx.withdrawal) || 0);
+        } else {
+            break;
+        }
+    }
+
+    const confirmMessage = openingBalance !== 0
+        ? `This will permanently delete ${txsToPurge.length} reconciled transaction(s) and create an opening balance of $${openingBalance.toFixed(2)}. Continue?`
+        : `This will permanently delete ${txsToPurge.length} reconciled transaction(s). Continue?`;
+
+    if (confirm(confirmMessage)) {
+        // Create opening balance transaction (one day after last purged transaction)
+        if (openingBalance !== 0) {
+            const openingBalanceDateStr = purgeDate.toISOString().slice(0, 10);
+            const openingBalanceTx = {
+                accountId: currentAccountId,
+                code: '',
+                date: openingBalanceDateStr,
+                description: 'Opening Balance',
+                withdrawal: openingBalance < 0 ? Math.abs(openingBalance).toFixed(2) : '0',
+                deposit: openingBalance > 0 ? openingBalance.toFixed(2) : '0',
+                reconciled: true
+            };
+            await db.dbAdd('transactions', openingBalanceTx);
+        }
+
+        // Delete purged transactions
+        for (const tx of txsToPurge) {
+            await db.dbDelete('transactions', tx.id);
+        }
+
+        await loadTransactionsForCurrentAccount();
+        modals.purge.style.display = 'none';
+
+        const message = openingBalance !== 0
+            ? `Purged ${txsToPurge.length} transactions. Opening balance of $${openingBalance.toFixed(2)} created.`
+            : `Purged ${txsToPurge.length} transactions.`;
+        alert(message);
     }
 }
     
