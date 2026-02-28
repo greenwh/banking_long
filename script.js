@@ -24,6 +24,16 @@ const accountSelect = document.getElementById('account-select');
 const accountNameHeader = document.getElementById('account-name-header');
 let csvImportPlan = null;
 
+// --- CODE DEFAULTS ---
+const CODE_DEFAULTS = {
+    'I':   { description: 'Interest',           greyOut: 'withdrawal' },
+    'ATM': { description: 'Cash Withdrawal',    greyOut: 'deposit' },
+    'BP':  { description: 'Bill Pay',           greyOut: 'deposit' },
+    'AD':  { description: 'Automatic Deposit',  greyOut: 'withdrawal' },
+    'T':   { description: 'Transfer',           greyOut: null },
+};
+const DEFAULT_DESCRIPTIONS = new Set(Object.values(CODE_DEFAULTS).map(d => d.description));
+
 // --- HELPERS ---
 /**
  * Gets the current local date in YYYY-MM-DD format.
@@ -35,6 +45,26 @@ function getLocalYYYYMMDD() {
     const month = (date.getMonth() + 1).toString().padStart(2, '0'); // JS months are 0-indexed
     const day = date.getDate().toString().padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function applyCodeDefaults(codeInput, descInput, depositInput, withdrawalInput) {
+    const code = codeInput.value.toUpperCase();
+    const defaults = CODE_DEFAULTS[code];
+
+    // Always re-enable both fields first, then selectively disable
+    depositInput.disabled = false;
+    withdrawalInput.disabled = false;
+
+    if (defaults) {
+        // Only set description if empty or was a previous auto-default
+        if (!descInput.value || DEFAULT_DESCRIPTIONS.has(descInput.value)) {
+            descInput.value = defaults.description;
+        }
+        if (defaults.greyOut) {
+            const fieldToDisable = defaults.greyOut === 'deposit' ? depositInput : withdrawalInput;
+            fieldToDisable.disabled = true;
+        }
+    }
 }
 
 // --- CORE APPLICATION FLOW ---
@@ -94,6 +124,17 @@ async function loadTransactionsForCurrentAccount() {
 
 // --- UI RENDERING ---
 function render() {
+    // Compute total balance from ALL transactions (unfiltered) for the top bar
+    const totalBalance = transactions.reduce((sum, tx) =>
+        sum + (parseFloat(tx.deposit) || 0) - (parseFloat(tx.withdrawal) || 0), 0);
+    const balanceDisplay = document.getElementById('current-balance-display');
+    if (balanceDisplay) {
+        balanceDisplay.textContent = currentAccountId ? formatCurrency(totalBalance) : '—';
+        balanceDisplay.className = (totalBalance < 0 && currentAccountId)
+            ? 'balance-display balance-negative'
+            : 'balance-display';
+    }
+
     let filteredTxs = transactions.filter(tx => {
         if (filters.startDate && new Date(tx.date) < new Date(filters.startDate)) return false;
         if (filters.endDate && new Date(tx.date) > new Date(filters.endDate)) return false;
@@ -157,6 +198,23 @@ function createTransactionRow(tx, balance) {
         <td class="col-delete">${!isNewRow ? '<button class="delete-btn">X</button>' : ''}</td>
     `;
     
+    // Apply code-sensitive state for existing transactions
+    const codeInput = row.querySelector('input[data-field="code"]');
+    const descInput = row.querySelector('input[data-field="description"]');
+    const depositInput = row.querySelector('input[data-field="deposit"]');
+    const withdrawalInput = row.querySelector('input[data-field="withdrawal"]');
+
+    // Apply initial disabled state based on saved code (existing rows only)
+    if (!isNewRow && txData.code) {
+        applyCodeDefaults(codeInput, descInput, depositInput, withdrawalInput);
+    }
+
+    // Attach code change listener BEFORE handleInlineEdit so description is updated
+    // before the inline edit save reads it
+    codeInput.addEventListener('change', () => {
+        applyCodeDefaults(codeInput, descInput, depositInput, withdrawalInput);
+    });
+
     row.querySelectorAll('input').forEach(input => input.addEventListener('change', handleInlineEdit));
     if (!isNewRow) {
         row.querySelector('.delete-btn').addEventListener('click', handleDeleteTransaction);
@@ -170,7 +228,18 @@ function setupEventListeners() {
     document.getElementById('add-btn').addEventListener('click', () => {
         document.getElementById('add-transaction-form').reset();
         document.getElementById('transaction-date').value = getLocalYYYYMMDD();
+        // Reset any disabled state from previous modal use
+        document.getElementById('transaction-withdrawal').disabled = false;
+        document.getElementById('transaction-deposit').disabled = false;
         modals.add.style.display = 'block';
+    });
+
+    const modalCodeInput = document.getElementById('transaction-code');
+    modalCodeInput.addEventListener('change', () => {
+        const descInput = document.getElementById('transaction-description');
+        const depositInput = document.getElementById('transaction-deposit');
+        const withdrawalInput = document.getElementById('transaction-withdrawal');
+        applyCodeDefaults(modalCodeInput, descInput, depositInput, withdrawalInput);
     });
     document.getElementById('filter-btn').addEventListener('click', () => {
         document.getElementById('filter-start-date').value = filters.startDate;
@@ -290,7 +359,16 @@ async function handleInlineEdit(e) {
     } else {
         const tx = await db.dbGet('transactions', parseInt(id));
         if (tx) {
-            tx[input.dataset.field] = input.type === 'checkbox' ? input.checked : input.value;
+            const field = input.dataset.field;
+            tx[field] = input.type === 'checkbox' ? input.checked : input.value;
+            // When code changes, also update description if appropriate
+            if (field === 'code') {
+                const newCode = input.value.toUpperCase();
+                const defaults = CODE_DEFAULTS[newCode];
+                if (defaults && (!tx.description || DEFAULT_DESCRIPTIONS.has(tx.description))) {
+                    tx.description = defaults.description;
+                }
+            }
             await db.dbPut('transactions', tx);
             await loadTransactionsForCurrentAccount();
         }
@@ -349,8 +427,8 @@ async function handleAddTransaction(e) {
         code: form.elements['transaction-code'].value,
         date: form.elements['transaction-date'].value,
         description: form.elements['transaction-description'].value,
-        withdrawal: form.elements['transaction-withdrawal'].value || 0,
-        deposit: form.elements['transaction-deposit'].value || 0,
+        withdrawal: form.elements['transaction-withdrawal'].disabled ? 0 : (form.elements['transaction-withdrawal'].value || 0),
+        deposit: form.elements['transaction-deposit'].disabled ? 0 : (form.elements['transaction-deposit'].value || 0),
         reconciled: false
     };
     await db.dbAdd('transactions', newTx);
